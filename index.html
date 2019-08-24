@@ -114,7 +114,7 @@ window.addEventListener('focus', e => {
 
 
 window.addEventListener('touchstart', e => {
-  if (e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
+  if (e.target.id === 'root' || e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
     e.stopPropagation();
     e.preventDefault();
   } else {
@@ -124,7 +124,7 @@ window.addEventListener('touchstart', e => {
 
 
 window.addEventListener('touchmove', e => {
-  if (e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
+  if (e.target.id === 'root' || e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
     const width = window.innerWidth;
     const height = window.innerWidth;
 
@@ -139,7 +139,7 @@ window.addEventListener('touchmove', e => {
 // window.addEventListener('mouseup', e => {});
 
 window.addEventListener('touchend', e => {
-  if (e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
+  if (e.target.id === 'root' || e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
     e.stopPropagation();
     e.preventDefault();
 
@@ -268,9 +268,13 @@ if (window.orientation && (window.orientation === -90 || window.orientation === 
   // Only in landscape mode on iOS Safari,
   // after the first requestAnimationFrame() and plus 10 milliseconds, Safari seems to report real
   // visible area's height as window.innerHeight, and so we're ready to render the page!
-  window.setTimeout(() => updateVisibleSizeInfo(window.innerWidth, window.innerHeight), 10);
+  window.setTimeout(() => {
+    //updateVisibleSizeInfo(window.innerWidth, window.innerHeight);
+    window.g_app.fitTextareaInVisibleViewport(window.innerHeight, window.innerHeight);
+  }, 10);
 } else {
-  updateVisibleSizeInfo(window.innerWidth, window.innerHeight);
+  // updateVisibleSizeInfo(window.innerWidth, window.innerHeight);
+  window.g_app.fitTextareaInVisibleViewport(window.innerHeight, window.innerHeight);
 }
 
 
