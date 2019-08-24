@@ -114,7 +114,7 @@ window.addEventListener('focus', e => {
 
 
 window.addEventListener('touchstart', e => {
-  if (e.target === window.document.body || e.target === window.document.documentElement) {
+  if (e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
     e.stopPropagation();
     e.preventDefault();
   } else {
@@ -124,7 +124,7 @@ window.addEventListener('touchstart', e => {
 
 
 window.addEventListener('touchmove', e => {
-  if (e.target === window.document.body || e.target === window.document.documentElement) {
+  if (e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
     const width = window.innerWidth;
     const height = window.innerWidth;
 
@@ -139,7 +139,7 @@ window.addEventListener('touchmove', e => {
 // window.addEventListener('mouseup', e => {});
 
 window.addEventListener('touchend', e => {
-  if (e.target === window.document.body || e.target === window.document.documentElement) {
+  if (e.target.nodeName === 'H1' || e.target === window.document.body || e.target === window.document.documentElement) {
     e.stopPropagation();
     e.preventDefault();
 
