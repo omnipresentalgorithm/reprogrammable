@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html hidden lang="en">
+<head>
+  <link rel="icon" href="data:,">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="transparent">
+  <meta name="format-detection" content="telephone=no">
+<script>'use strict';
+window.g_app = {
+  modifiedAt: document.lastModified,
+  launchedAt: performance.now(),
+};
+
+</script>
+
+<script type="module">
+
+const app = window.g_app;
+
+window.addEventListener('load', () => {
+
+  const s = window.document.createElement('script');
+  s.setAttribute('async', '');
+  s.setAttribute('id', 'REMOVE');
+  s.setAttribute('src', 'data:text/javascript;base64,d2luZG93LmdfYXBwLm1haW4oKTsKLy8jIHNvdXJjZVVSTD1odHRwczovL2RlbW8uY3Jvc3NwbGF0Zm9ybXVpLmNvbS8obG9hZHNwbGl0KQ==');
+  window.document.head.appendChild(s);
+});
+
+{ // UUID Generator
+
+  const lut = Array(256).fill().map((_, i) => (i < 16 ? '0' : '') + (i).toString(16));
+
+  const _ = app.uuid = {
+    random128: () => { 
+      const dvals = new Uint32Array(4);
+      crypto.getRandomValues(dvals);
+      return dvals;
+    },
+
+    formatUuid: ([d0, d1, d2, d3]) =>
+      lut[d0       & 0xff]        + lut[d0 >>  8 & 0xff] + lut[d0 >> 16 & 0xff] + lut[d0 >> 24 & 0xff] + '-' +
+      lut[d1       & 0xff]        + lut[d1 >>  8 & 0xff] + '-' +
+      lut[d1 >> 16 & 0x0f | 0x40] + lut[d1 >> 24 & 0xff] + '-' +
+      lut[d2       & 0x3f | 0x80] + lut[d2 >>  8 & 0xff] + '-' +
+      lut[d2 >> 16 & 0xff]        + lut[d2 >> 24 & 0xff] +
+      lut[d3       & 0xff]        + lut[d3 >>  8 & 0xff] +
+      lut[d3 >> 16 & 0xff]        + lut[d3 >> 24 & 0xff],
+
+    uuid: () => _.formatUuid(_.random128())
+  };
+}
+
+app.runId = app.uuid.random128();
+
+app.main = () => {
+
+const s = window.document.getElementById('REMOVE');
+document.head.removeChild(s);
+
+const app = window.g_app;
+
+// Access root element
+const rootElt = window.g_app.rootElt = window.document.getElementById('root');
+
+// Split script here so other microtasks can be run after a lenghty OpenGL init
+
+setTimeout(() => {
+
+// At start, window.document.activeElement equals null
+
+// window.document.activeElement equals body starting from here
+app.startedWithActiveElement = window.document.activeElement;
+app.startedWithFocus = window.document.hasFocus();
+
+
+// Enabling drag and drop support
+window.document.getElementById('0').addEventListener('dragover', e => {
+  e.preventDefault();
+});
+
+
+window.document.body.addEventListener('keyup', e => {
+  // Fullscreen mode by hitting the 'f' key on the keyboard
+  if (e.key === 'f') {
+    e.preventDefault();
+    e.stopPropagation();
+    const rfs = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+    if (rfs) {
+      rfs.apply(document.documentElement);
+    }
+  }
+}, true);
+
+
+window.addEventListener('unload', () => {
+  window.g_app = null;
+
+  // In mobile Safari, we have to call takeHeapSnapshot in order to unload WASM (and supposedly other resources)
+  if (console.takeHeapSnapshot) {
+    console.takeHeapSnapshot('unload');
+  }
+}, true);
+
+
+window.addEventListener('blur', e => {
+  console.log('blur', window.document.activeElement, window.document.hasFocus());
+}, true);
+
+
+window.addEventListener('focus', e => {
+  console.log('focus', window.document.activeElement, window.document.hasFocus());
+}, true);
+
+
+window.addEventListener('touchstart', e => {
+  if (e.target === window.document.body || e.target === window.document.documentElement) {
+    e.stopPropagation();
+    e.preventDefault();
+  } else {
+    console.log(e);
+  }
+}, { capture: true, passive: false });
+
+
+window.addEventListener('touchmove', e => {
+  if (e.target === window.document.body || e.target === window.document.documentElement) {
+    const width = window.innerWidth;
+    const height = window.innerWidth;
+
+    e.stopPropagation();
+    e.preventDefault();
+  } else {
+    console.log(e);
+  }
+}, { capture: true, passive: false });
+
+
+// window.addEventListener('mouseup', e => {});
+
+window.addEventListener('touchend', e => {
+  if (e.target === window.document.body || e.target === window.document.documentElement) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    // Note this must happen in this microtask,
+    // otherwise the keyboard won't appear
+    //if (e.target === window.g_app.canvasElt) {
+      // editText();
+    //}
+  } else {
+    console.log(e);
+  }
+}, { capture: true, passive: false });
+
+
+const updateVisibleSizeInfo = (w, h) => {
+  window.document.documentElement.style.setProperty('--visible-width', w + 'px');
+  window.document.documentElement.style.setProperty('--visible-height', h + 'px');
+};
+
+
+app.fitTextareaInVisibleViewport = (visibleHeight, visibleWidth = window.innerWidth) => {
+
+  window.g_app.rootElt.setAttribute('height', window.devicePixelRatio * visibleHeight + 'px');
+  window.g_app.rootElt.setAttribute('width', window.devicePixelRatio * visibleWidth + 'px');
+
+  window.g_app.rootElt.style.height = visibleHeight + 'px';
+  window.g_app.rootElt.style.width = visibleWidth + 'px';
+
+  updateVisibleSizeInfo(visibleWidth, visibleHeight);
+
+  if (window.g_app.textboxElt) {
+
+    textboxElt.style.height = visibleHeight + 'px';
+    textboxElt.style.minHeight = visibleHeight + 'px';
+  }
+
+  // These are only when the textarea is active!
+  // On blur these must return to their empty size values.
+  window.document.documentElement.className = 'with-virtual-keyboard';
+
+  if (window.g_app.textboxElt) {
+    textboxElt.style.width = visibleWidth + 'px';
+  }
+};
+
+
+// On iOS, it doing setup, so the promise will be resolved when it completes.
+window.addEventListener('scroll', e => {
+
+  if (e.target !== window.document) {
+    return;
+  }
+
+  if (window.g_trackFocusHappens) {
+    window.g_trackFocusHappens = false;
+
+    // To keep everything visible inside of the viewport when typing:
+    window.g_app.rootElt.style.transform = 'translate3d(0px, ' + window.document.scrollingElement.scrollTop + 'px, 0px)';
+
+    textboxElt.style.transform = 'translate3d(0px, 0px, 1px)';
+
+    let visibleHeight = (window.g_trackFocusHappensScreenBase || window.innerHeight) - window.document.scrollingElement.scrollTop;
+
+    if (window.innerHeight < visibleHeight) {
+      visibleHeight = window.innerHeight;
+    }
+    console.log('fitting in...', visibleHeight, window.document.scrollingElement.scrollTop, window.g_trackFocusHappensScreenBase);
+
+    window.g_trackFocusHappensScreenBase = 0;
+
+    window.g_app.fitTextareaInVisibleViewport(visibleHeight);
+  }
+
+
+  if (window.document.scrollingElement.scrollTop) {
+    console.log('restoring scroll pos...');
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 300);
+
+  } else {
+    // To keep everything visible inside of the viewport when typing:
+    window.g_app.rootElt.style.transform = 'translate3d(0px, 0px, 0px)';
+    textboxElt.style.transform = 'translate3d(0px, 0px, 1px)';
+  }
+
+}, true);
+
+
+// On Android, we can get actual height only after 'resize' event if keyboard was appeared on the page reload!
+window.addEventListener('resize', () => {
+
+   setTimeout(() => {
+     window.g_app.fitTextareaInVisibleViewport(window.innerHeight);
+   }, 100);
+
+   //window.console.log(window.performance.now(), 'resize', window.innerHeight, window.document.scrollingElement.scrollHeight,
+   //  window.innerWidth, window.document.scrollingElement.scrollWidth, window.orientation);
+
+   if (window.navigator.platform === 'iPhone' || window.navigator.platform === 'iPad') {
+
+     // Dismiss the virtual keyboard if any resize happens, otherwise it'll break the layout
+     if (window.g_app.textboxElt && !textboxElt.hidden) {
+       textboxElt.blur();
+     }
+   }
+
+}, true);
+
+window.addEventListener('orientationchange', () => {
+  //console.log('orientationchange', window.innerHeight, window.document.scrollingElement.scrollHeight,
+  //  window.innerWidth, window.document.scrollingElement.scrollWidth, window.orientation);
+
+  if ((window.orientation === 0 || window.orientation === 180) && window.navigator.appVersion.indexOf('Android') !== -1) {
+    // On Android, when rotating back to portrait from landscape, it's necessary to put the width to the low size,
+    // otherwise Android will scale the viewport to the smaller size
+    window.g_app.fitTextareaInVisibleViewport(window.innerHeight, window.innerHeight);
+  } else {
+    window.g_app.fitTextareaInVisibleViewport(window.innerHeight);
+  }
+}, true);
+
+
+// setTimeout() is necessary because on iOS window.innerHeight is bigger than visible area until the animation frame finishes
+if (window.orientation && (window.orientation === -90 || window.orientation === 90)) {
+  // Only in landscape mode on iOS Safari,
+  // after the first requestAnimationFrame() and plus 10 milliseconds, Safari seems to report real
+  // visible area's height as window.innerHeight, and so we're ready to render the page!
+  window.setTimeout(() => updateVisibleSizeInfo(window.innerWidth, window.innerHeight), 10);
+} else {
+  updateVisibleSizeInfo(window.innerWidth, window.innerHeight);
+}
+
+
+window.document.documentElement.hidden = false;
+window.document.body.hidden = false;
+
+if (window.scrollY) {
+  window.scrollTo(0, 0);
+}
+
+app.devicePixelRatio = window.devicePixelRatio;
+
+const width = window.innerWidth;
+const height = window.innerHeight;
+const rootElt = app.rootElt;
+
+// --------------------------------------
+// MAIN APP CODE
+
+app.render = () => {
+  rootElt.innerHTML = '<h1>Reprogrammable JS set</h1>';
+}
+
+// --------------------------------------
+// First render
+requestAnimationFrame(window.g_app.render);
+
+}, 0);
+}
+</script><style>
+html {
+  --visible-width: 16px;
+  --visible-height: 16px;
+
+  transform-style: preserve-3d;
+}
+
+html, body {
+  overflow: visible;
+  height: 0px;
+  width: 0px;
+  background-color: transparent !important;
+}
+
+html.with-virtual-keyboard, html.with-virtual-keyboard > body {
+  height: var(--visible-height);
+  min-height: var(--visible-height);
+  width: var(--visible-width);
+}
+
+body {
+  overflow: hidden;
+  margin: 0px;
+}
+
+html, body, #root, textarea {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  max-height: 999999px;
+
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
+textarea:focus {
+  outline-offset: 0px;
+}
+
+:focus {
+  outline: none;
+}
+
+textarea::placeholder {
+  color: #88cc88;
+}
+
+textarea {
+  -webkit-overflow-scrolling : touch !important;
+  outline: none;
+  border: none;
+  border-width: 0px;
+  border-radius: 0px;
+  border-image-width: 0px;
+  background-color: transparent;
+  resize: none;
+  padding: 0px;
+  font-size: 36px;
+  line-height: 42px;
+}
+
+#root {
+  transform: translate3d(0px, 0px, 0px);
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+         </style></head><body><div id="root" width="16px" height="16px" draggable="true"></div><input hidden="" id="1" type="file" style="position: absolute; min-height: 44px; width: 200px; background-color: red; transform: translate3d(0, 0, 2px);"></body></html>
+
+
+</script>
