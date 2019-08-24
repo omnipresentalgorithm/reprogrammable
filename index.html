@@ -296,92 +296,125 @@ const rootElt = app.rootElt;
 
 
 
-const Zero = (c) => {
-  return { c, v: 0 };
-};
+const Zero = (c) => ({ c, v: 0 });
+const One = (c) => ({ c, v: 1 });
+const Dc = (c) => ({c});
+const Unknown = (c) => ({});
 
-const One = (c) => {
-  return { c, v: 1 };
-};
+function Mux () {
+  // Inputs
+  this.a = Dc;
+  this.b = Dc;
+  this.c = Dc;
 
-class Mux {
-  constructor ({ inputs: { a, b, c }}) {
-    this.a = b;
-    this.b = a;
-    this.c = c;
-
-    this.x = (c) => this.c(c).v ? this.a(c) : this.b(c);
-  }
+  // Output (ultimate reconnector)
+  this.x = (c) => this.c(c).v ? this.b(c) : this.a(c);
 }
 
-class And {
-  constructor ({ deps: { Mux, Zero }, inputs: { a, b }}) {
-    this.a = a;
-    this.b = b;
+function And ({ deps: { Mux, Zero }}) {
+  // Inputs
+  this.a = Dc;
+  this.b = Dc;
 
-    this.mux0 = new Mux({ inputs: {
-      a: Zero,
-      b: this.b,
-      c: this.a,
-    }});
+  // Dependencies - this is a dep input. Could be a factory:
+  // given a ref exists, new connection should be made
+  // Object can do that totally locally ("prototype-like" base inheritance,
+  // it only changes configuration for the router to add corresponting routing table)
+  const mux0 = new Mux();
 
-    this.x = (c) => this.mux0.x(c);
-  }
+  // Connections
+  mux0.a = Zero;
+  mux0.b = (c) => this.b(c);
+  mux0.c = (c) => this.a(c);
+
+  // Output (also is an additional connection)
+  this.x = (c) => mux0.x(c);
+
+  // Object itself is a function too ('read')
 }
 
-class Xor {
-  constructor ({ deps: { Mux, Zero, One }, inputs: { a, b }}) {
-    this.a = a;
-    this.b = b;
+function Xor ({ deps: { Mux, Zero, One }}) {
+  // Inputs
+  this.a = Dc;
+  this.b = Dc;
 
-    this.mux0 = new Mux({ inputs: {
-      a: One,
-      b: Zero,
-      c: this.b,
-    }});
+  // Dependencies
+  const mux0 = new Mux();
+  const mux1 = new Mux();
 
-    this.mux1 = new Mux({ inputs: {
-      a: this.b,
-      b: (c) => this.mux0.x(c),
-      c: this.a,
-    }});
+  // Connections
+  mux0.a = One;
+  mux0.b = Zero;
+  mux0.c = (c) => this.b(c);
 
-    this.x = (c) => this.mux1.x(c);
-  }
+  mux1.a = (c) => this.b(c);
+  mux1.b = (c) => mux0.x(c);
+  mux1.c = (c) => this.a(c);
+
+  // Output (also is an additional connection)
+  this.x = (c) => mux1.x(c);
+  // Object itself is a function too ('read')
 }
 
 
-class Adder {
+function Adder () {
+  // Inputs
+  this.giveMeTheSourceCode = Dc;
 
-  constructor ({ deps: { Xor, And, Mux, Zero, One },
-                 inputs: { a: [a0, a1], b: [b0, b1]} }) {
+  // Object itself is a function too ('read')
+  // Only output
+  this.accessCellInterface = (c) => {
 
-    this.a0 = a0;
-    this.a1 = a1;
-    this.b0 = b0;
-    this.b1 = b1;
+    // Read a pre-exiting input
+    const sourceCode = this.giveMeTheSourceCode(c);
+    // Self-reprogram (making dependencies resolved)
+    const updater = new Function(sourceCode);
+    updater.apply(this);
 
-    this.xor0 = new Xor({ deps: { Mux, Zero, One }, inputs: { a: a0, b: b0 }});
-
-    this.xor1 = new Xor({ deps: { Mux, Zero, One }, inputs: {
-      a: this.a1,
-      b: this.b1,
-    }});
-    
-    this.and0 = new And({ deps: { Mux, Zero }, inputs: {
-      a: this.a0,
-      b: this.b0,
-    }});
-
-    this.xor2 = new Xor({ deps: { Mux, Zero, One }, inputs: {
-      a: (c) => this.and0.x(c),
-      b: (c) => this.xor1.x(c),
-    }});
-
-    this.s0 = (c) => this.xor0.x(c);
-    this.s1 = (c) => this.xor2.x(c);
-  }
+    return this;
+  };
 }
+
+// This source code gets applied as a response
+const adderSourceCode = `
+
+  // Internal interface: dependency types
+  const Dc = this.giveMeDcDependency();
+  const Xor = this.giveMeXorDependency();
+  const And = this.giveMeAndDependency();
+  const Mux = this.giveMeMuxDependency();
+  const Zero = this.giveMeZeroDependency();
+  const One = this.giveMeOneDependency();
+
+  // Internal interface: 4 membranes
+  const xor0 = new Xor({ deps: { Mux, Zero, One }});
+  const xor1 = new Xor({ deps: { Mux, Zero, One }});
+  const xor2 = new Xor({ deps: { Mux, Zero, One }});
+  const and0 = new And({ deps: { Mux, Zero }});
+
+  // External interface membrane: 2 added inputs 
+  this.a = [Dc, Dc];
+  this.b = [Dc, Dc];
+  // External interface membrane: 1 added output (also is an additional connection)
+  this.s = [Dc, Dc];
+
+  // Connections: 10 added connections: "2-bit adder circuit w/o carry"
+  xor0.a = (c) => this.a[0](c);
+  xor0.b = (c) => this.b[0](c);
+
+  xor1.a = (c) => this.a[1](c);
+  xor1.b = (c) => this.b[1](c);
+
+  xor2.a = (c) => and0.x(c);
+  xor2.b = (c) => xor1.x(c);
+
+  and0.a = (c) => this.a[0](c);
+  and0.b = (c) => this.b[0](c);
+
+  this.s[0] = (c) => xor0.x(c);
+  this.s[1] = (c) => xor2.x(c);
+
+`;
 
 const a0 = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
 const a1 = [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1];
@@ -391,24 +424,40 @@ const b1 = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1];
 const e0 = [0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1];
 const e1 = [0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1];
 
+const toVal = (arr) => (c) => arr[c] ? One(c) : Zero(c);
 
 app.render = () => {
 
-  const adder = new Adder({ deps: { Xor, And, Mux, Zero, One },
-    inputs: {
-      a: [ (c) => a0[c] ? One(c) : Zero(c),
-           (c) => a1[c] ? One(c) : Zero(c) ],
+  const adder = new Adder();
+  adder.giveMeTheSourceCode = (c) => {
+    return adderSourceCode;
+  };
 
-      b: [ (c) => b0[c] ? One(c) : Zero(c),
-           (c) => b1[c] ? One(c) : Zero(c) ],
-      }});
+  // Provide dependencies as inputs (todo: rewrite them to be routing tables)
+  adder.giveMeDcDependency = (c) => Dc;
+  adder.giveMeXorDependency = (c) => Xor;
+  adder.giveMeAndDependency = (c) => And;
+  adder.giveMeMuxDependency = (c) => Mux;
+  adder.giveMeZeroDependency = (c) => Zero;
+  adder.giveMeOneDependency = (c) => One;
+
+  // Changes the object and returns 'this'
+  const adderCellInterface = adder.accessCellInterface(1);
+
+  // Connect inputs:
+  adderCellInterface.a = [toVal(a0), toVal(a1)];
+  adderCellInterface.b = [toVal(b0), toVal(b1)];
 
   let result = '';
 
   // Partially ordered acyclic causal graph node.
   for (let causalTag = 0; causalTag < 16; ++causalTag) {
-    const s0 = adder.s0(causalTag);
-    const s1 = adder.s1(causalTag);
+
+    // Read outputs:
+    const s0 = adderCellInterface.s[0](causalTag);
+    const s1 = adderCellInterface.s[1](causalTag);
+
+    // Print formatting
     const a = a0[causalTag] + 2 * a1[causalTag];
     const b = b0[causalTag] + 2 * b1[causalTag];
     result += `<div  style="margin: 16px;">${ a } + ${ b } = ${ s0.v + 2 * s1.v }</div>`;
