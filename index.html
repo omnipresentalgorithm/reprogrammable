@@ -270,11 +270,11 @@ if (window.orientation && (window.orientation === -90 || window.orientation === 
   // visible area's height as window.innerHeight, and so we're ready to render the page!
   window.setTimeout(() => {
     //updateVisibleSizeInfo(window.innerWidth, window.innerHeight);
-    window.g_app.fitTextareaInVisibleViewport(window.innerHeight, window.innerHeight);
+    window.g_app.fitTextareaInVisibleViewport(window.innerWidth, window.innerHeight);
   }, 10);
 } else {
   // updateVisibleSizeInfo(window.innerWidth, window.innerHeight);
-  window.g_app.fitTextareaInVisibleViewport(window.innerHeight, window.innerHeight);
+  window.g_app.fitTextareaInVisibleViewport(window.innerWidth, window.innerHeight);
 }
 
 
