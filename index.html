@@ -294,9 +294,129 @@ const rootElt = app.rootElt;
 // --------------------------------------
 // MAIN APP CODE
 
+
+
+const Zero = (c) => {
+  return { c, v: 0 };
+};
+
+const One = (c) => {
+  return { c, v: 1 };
+};
+
+class Mux {
+  constructor ({ inputs: { a, b, c }}) {
+    this.a = b;
+    this.b = a;
+    this.c = c;
+
+    this.x = (c) => this.c(c).v ? this.a(c) : this.b(c);
+  }
+}
+
+class And {
+  constructor ({ deps: { Mux, Zero }, inputs: { a, b }}) {
+    this.a = a;
+    this.b = b;
+
+    this.mux0 = new Mux({ inputs: {
+      a: Zero,
+      b: this.b,
+      c: this.a,
+    }});
+
+    this.x = (c) => this.mux0.x(c);
+  }
+}
+
+class Xor {
+  constructor ({ deps: { Mux, Zero, One }, inputs: { a, b }}) {
+    this.a = a;
+    this.b = b;
+
+    this.mux0 = new Mux({ inputs: {
+      a: One,
+      b: Zero,
+      c: this.b,
+    }});
+
+    this.mux1 = new Mux({ inputs: {
+      a: this.b,
+      b: (c) => this.mux0.x(c),
+      c: this.a,
+    }});
+
+    this.x = (c) => this.mux1.x(c);
+  }
+}
+
+
+class Adder {
+
+  constructor ({ deps: { Xor, And, Mux, Zero, One },
+                 inputs: { a: [a0, a1], b: [b0, b1]} }) {
+
+    this.a0 = a0;
+    this.a1 = a1;
+    this.b0 = b0;
+    this.b1 = b1;
+
+    this.xor0 = new Xor({ deps: { Mux, Zero, One }, inputs: { a: a0, b: b0 }});
+
+    this.xor1 = new Xor({ deps: { Mux, Zero, One }, inputs: {
+      a: this.a1,
+      b: this.b1,
+    }});
+    
+    this.and0 = new And({ deps: { Mux, Zero }, inputs: {
+      a: this.a0,
+      b: this.b0,
+    }});
+
+    this.xor2 = new Xor({ deps: { Mux, Zero, One }, inputs: {
+      a: (c) => this.and0.x(c),
+      b: (c) => this.xor1.x(c),
+    }});
+
+    this.s0 = (c) => this.xor0.x(c);
+    this.s1 = (c) => this.xor2.x(c);
+  }
+}
+
+const a0 = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
+const a1 = [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1];
+const b0 = [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1];
+const b1 = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1];
+
+const e0 = [0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1];
+const e1 = [0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1];
+
+
 app.render = () => {
+
+  const adder = new Adder({ deps: { Xor, And, Mux, Zero, One },
+    inputs: {
+      a: [ (c) => a0[c] ? One(c) : Zero(c),
+           (c) => a1[c] ? One(c) : Zero(c) ],
+
+      b: [ (c) => b0[c] ? One(c) : Zero(c),
+           (c) => b1[c] ? One(c) : Zero(c) ],
+      }});
+
+  let result = '';
+
+  // Partially ordered acyclic causal graph node.
+  for (let causalTag = 0; causalTag < 16; ++causalTag) {
+    const s0 = adder.s0(causalTag);
+    const s1 = adder.s1(causalTag);
+    const a = a0[causalTag] + 2 * a1[causalTag];
+    const b = b0[causalTag] + 2 * b1[causalTag];
+    result += `<div  style="margin: 16px;">${ a } + ${ b } = ${ s0.v + 2 * s1.v }</div>`;
+  }
+
   rootElt.innerHTML = `
-    <h1>Reprogrammable JS set</h1>
+    <h1 style="margin: 12px;">Reprogrammable JS set</h1>
+    ${ result }
     <h1 style="position: absolute; bottom: 0; left: 0;">LB</h1>
     <h1 style="position: absolute; bottom: 0; right: 0;">RB</h1>
   `;
