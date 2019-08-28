@@ -241,10 +241,11 @@ window.addEventListener('resize', () => {
 
    if (window.navigator.platform === 'iPhone' || window.navigator.platform === 'iPad') {
 
-     // Dismiss the virtual keyboard if any resize happens, otherwise it'll break the layout
-     if (window.g_app.textboxElt && !window.g_app.textboxElt.hidden) {
-       window.g_app.textboxElt.blur();
-     }
+     // Dismiss the virtual keyboard if any resize happens, otherwise it'll break the layout.
+     // TODO: exclude this when resize happens on the initial keyboard activation.
+     //if (window.g_app.textboxElt && !window.g_app.textboxElt.hidden) {
+       // window.g_app.textboxElt.blur();
+     //}
    }
 
 }, true);
