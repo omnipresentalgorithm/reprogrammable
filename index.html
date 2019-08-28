@@ -567,7 +567,7 @@ app.render = () => {
   const result = initialOutputPortProvidedForOsConsumption({ cause, user });
 
   rootElt.innerHTML = `
-    <h1 style="margin: 12px;">Reprogrammable JS set</h1>
+    <h1 style="margin: 12px;">Reprogrammable JS set ${ window.g_app.modifiedAt }</h1>
     ${ result }
     <h1 style="position: absolute; bottom: 0; left: 0;">LB</h1>
     <h1 style="position: absolute; bottom: 0; right: 0;">RB</h1>
