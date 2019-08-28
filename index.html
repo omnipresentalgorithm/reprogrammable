@@ -146,9 +146,6 @@ window.addEventListener('touchend', e => {
     // Note this must happen in this microtask,
     // otherwise the keyboard won't appear
     if (e.target.nodeName === 'H1') {
-      if (!window.g_app.textboxElt) {
-        window.g_app.createTextbox();
-      }
       window.g_app.editText();
     }
   } else {
@@ -765,6 +762,10 @@ const createTextbox = () => {
 };
 
 window.g_app.createTextbox = createTextbox;
+// Create a hidden textboxElt otherwise it won't appear on touchend:
+if (!window.g_app.textboxElt) {
+  window.g_app.createTextbox();
+}
 
 
 }
