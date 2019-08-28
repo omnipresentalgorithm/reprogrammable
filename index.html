@@ -145,9 +145,12 @@ window.addEventListener('touchend', e => {
 
     // Note this must happen in this microtask,
     // otherwise the keyboard won't appear
-    //if (e.target === window.g_app.canvasElt) {
-      // editText();
-    //}
+    if (e.target.nodeName === 'H1') {
+      if (!window.g_app.textboxElt) {
+        window.g_app.createTextbox();
+      }
+      window.g_app.editText();
+    }
   } else {
     console.log(e);
   }
@@ -172,8 +175,8 @@ app.fitTextareaInVisibleViewport = (visibleHeight, visibleWidth = window.innerWi
 
   if (window.g_app.textboxElt) {
 
-    textboxElt.style.height = visibleHeight + 'px';
-    textboxElt.style.minHeight = visibleHeight + 'px';
+    window.g_app.textboxElt.style.height = visibleHeight + 'px';
+    window.g_app.textboxElt.style.minHeight = visibleHeight + 'px';
   }
 
   // These are only when the textarea is active!
@@ -181,7 +184,7 @@ app.fitTextareaInVisibleViewport = (visibleHeight, visibleWidth = window.innerWi
   window.document.documentElement.className = 'with-virtual-keyboard';
 
   if (window.g_app.textboxElt) {
-    textboxElt.style.width = visibleWidth + 'px';
+    window.g_app.textboxElt.style.width = visibleWidth + 'px';
   }
 };
 
@@ -199,7 +202,7 @@ window.addEventListener('scroll', e => {
     // To keep everything visible inside of the viewport when typing:
     window.g_app.rootElt.style.transform = 'translate3d(0px, ' + window.document.scrollingElement.scrollTop + 'px, 0px)';
 
-    textboxElt.style.transform = 'translate3d(0px, 0px, 1px)';
+    window.g_app.textboxElt.style.transform = 'translate3d(0px, 0px, 1px)';
 
     let visibleHeight = (window.g_trackFocusHappensScreenBase || window.innerHeight) - window.document.scrollingElement.scrollTop;
 
@@ -223,7 +226,7 @@ window.addEventListener('scroll', e => {
   } else {
     // To keep everything visible inside of the viewport when typing:
     window.g_app.rootElt.style.transform = 'translate3d(0px, 0px, 0px)';
-    textboxElt.style.transform = 'translate3d(0px, 0px, 1px)';
+    window.g_app.textboxElt.style.transform = 'translate3d(0px, 0px, 1px)';
   }
 
 }, true);
@@ -243,7 +246,7 @@ window.addEventListener('resize', () => {
 
      // Dismiss the virtual keyboard if any resize happens, otherwise it'll break the layout
      if (window.g_app.textboxElt && !textboxElt.hidden) {
-       textboxElt.blur();
+       window.g_app.textboxElt.blur();
      }
    }
 
@@ -256,6 +259,7 @@ window.addEventListener('orientationchange', () => {
   if ((window.orientation === 0 || window.orientation === 180) && window.navigator.appVersion.indexOf('Android') !== -1) {
     // On Android, when rotating back to portrait from landscape, it's necessary to put the width to the low size,
     // otherwise Android will scale the viewport to the smaller size
+    //window.g_skipOneResizeToPreventFontBoosting = true;
     window.g_app.fitTextareaInVisibleViewport(window.innerHeight, window.innerHeight);
   } else {
     window.g_app.fitTextareaInVisibleViewport(window.innerHeight);
@@ -295,11 +299,12 @@ const rootElt = app.rootElt;
 // MAIN APP CODE
 
 
-
+/*
 const Zero = (c) => ({ c, v: 0 });
 const One = (c) => ({ c, v: 1 });
 const Dc = (c) => ({c});
 const Unknown = (c) => ({});
+
 
 function Mux () {
   // Inputs
@@ -310,6 +315,7 @@ function Mux () {
   // Output (ultimate reconnector)
   this.x = (c) => this.c(c).v ? this.b(c) : this.a(c);
 }
+* /
 
 function And ({ deps: { Mux, Zero }}) {
   // Inputs
@@ -333,7 +339,14 @@ function And ({ deps: { Mux, Zero }}) {
   // Object itself is a function too ('read')
 }
 
-function Xor ({ deps: { Mux, Zero, One }}) {
+function Xor () {
+
+  // Internal interface: dependency types
+  const Dc = this.giveMeDcDependency();
+  const Mux = this.giveMeMuxDependency();
+  const Zero = this.giveMeZeroDependency();
+  const One = this.giveMeOneDependency();
+
   // Inputs
   this.a = Dc;
   this.b = Dc;
@@ -357,13 +370,16 @@ function Xor ({ deps: { Mux, Zero, One }}) {
 }
 
 
-function Adder () {
+
+
+const ProtoCell = {
+
   // Inputs
-  this.giveMeTheSourceCode = Dc;
+  giveMeTheSourceCode: Dc,
 
   // Object itself is a function too ('read')
   // Only output
-  this.accessCellInterface = (c) => {
+  accessCellInterface (c) {
 
     // Read a pre-exiting input
     const sourceCode = this.giveMeTheSourceCode(c);
@@ -372,8 +388,33 @@ function Adder () {
     updater.apply(this);
 
     return this;
-  };
-}
+  }
+};
+
+// This source code gets applied as a response
+const muxSourceCode = `
+
+  // Internal interface is empty (this is an atomic/elementary cell).
+  // Internal interface: dependency types
+  const Dc = this.giveMeDcDependency();
+
+  // External interface membrane: 3 added inputs 
+  this.a = Dc;
+  this.b = Dc;
+  this.c = Dc;
+
+  // External interface membrane: 1 added output (also is an additional connection)
+  // ultimate reconnector
+  this.x = (c) => this.c(c).v ? this.b(c) : this.a(c);
+
+  // TODO: reprogram instead of c ? b : c - needs a stack of single-use copies per causal tag
+  // Reprogrammed into "1"
+  //this.x = (c) => this.b(c);
+
+  // Reprogrammed into "0"
+  //this.x = (c) => this.a(c);
+
+`;
 
 // This source code gets applied as a response
 const adderSourceCode = `
@@ -426,27 +467,58 @@ const e1 = [0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1];
 
 const toVal = (arr) => (c) => arr[c] ? One(c) : Zero(c);
 
-app.render = () => {
 
-  const adder = new Adder();
-  adder.giveMeTheSourceCode = (c) => {
-    return adderSourceCode;
-  };
+const createAnAdder = ({ causalTag, ProtoCell, Dc, Xor, And, Mux, Zero, One }) => {
+  // Create a copy of a ProtoCell
+  const protoCell = { ...ProtoCell };
+  protoCell.giveMeTheSourceCode = (c) => adderSourceCode;
 
   // Provide dependencies as inputs (todo: rewrite them to be routing tables)
-  adder.giveMeDcDependency = (c) => Dc;
-  adder.giveMeXorDependency = (c) => Xor;
-  adder.giveMeAndDependency = (c) => And;
-  adder.giveMeMuxDependency = (c) => Mux;
-  adder.giveMeZeroDependency = (c) => Zero;
-  adder.giveMeOneDependency = (c) => One;
+  protoCell.giveMeDcDependency = (c) => Dc;
+  protoCell.giveMeXorDependency = (c) => Xor;
+  protoCell.giveMeAndDependency = (c) => And;
+  protoCell.giveMeMuxDependency = (c) => Mux;
+  protoCell.giveMeZeroDependency = (c) => Zero;
+  protoCell.giveMeOneDependency = (c) => One;
 
   // Changes the object and returns 'this'
-  const adderCellInterface = adder.accessCellInterface(1);
+  const protoCellMutatedIntoAdder = protoCell.accessCellInterface(causalTag);
+  return protoCellMutatedIntoAdder;
+};
+
+const createAMux = ({ causalTag, ProtoCell, Dc }) => {
+  // Create a copy of a ProtoCell
+  const protoCell = { ...ProtoCell };
+  protoCell.giveMeTheSourceCode = (c) => muxSourceCode;
+
+  // Provide dependencies as inputs (todo: rewrite them to be routing tables)
+  protoCell.giveMeDcDependency = (c) => Dc;
+
+  // Changes the object and returns 'this'
+  const protoCellMutatedIntoMux = protoCell.accessCellInterface(causalTag);
+  return protoCellMutatedIntoMux;
+};
+
+*/
+
+const theApp = {
+
+
+  membrane ({ cause, user }) {
+    return this;
+  }
+};
+
+app.render = () => {
+
+  /*
+  const protoCellMutatedIntoAdder = createAnAdder({ causalTag: 1, ProtoCell, Dc, Xor, And,
+     Mux: createAMux({ causalTag: 1, ProtoCell, Dc }),
+     Zero, One });
 
   // Connect inputs:
-  adderCellInterface.a = [toVal(a0), toVal(a1)];
-  adderCellInterface.b = [toVal(b0), toVal(b1)];
+  protoCellMutatedIntoAdder.a = [toVal(a0), toVal(a1)];
+  protoCellMutatedIntoAdder.b = [toVal(b0), toVal(b1)];
 
   let result = '';
 
@@ -454,14 +526,48 @@ app.render = () => {
   for (let causalTag = 0; causalTag < 16; ++causalTag) {
 
     // Read outputs:
-    const s0 = adderCellInterface.s[0](causalTag);
-    const s1 = adderCellInterface.s[1](causalTag);
+    const s0 = protoCellMutatedIntoAdder.s[0](causalTag);
+    const s1 = protoCellMutatedIntoAdder.s[1](causalTag);
 
     // Print formatting
     const a = a0[causalTag] + 2 * a1[causalTag];
     const b = b0[causalTag] + 2 * b1[causalTag];
     result += `<div  style="margin: 16px;">${ a } + ${ b } = ${ s0.v + 2 * s1.v }</div>`;
   }
+
+  */
+
+  // At startup, proto-cell membrane output port's data bits are plugged in into the OS,
+  // so the OS can pull these bits describing the internal state of the cell.
+
+
+  // Initial app must have its input port connected to the OS, so it can be programmed.
+  // The app must be allowed to ask questions like,
+  // - What is my port configuration?
+  // - What are my dependencies?
+  // - What is my routing table?
+  // 
+  
+  // This port data is a typed image, consisting out of many one-bit functions.
+  // Calling it as a single function pulls all containing data bits in separate threads as function
+  // calls, having the same user ID and causal tag (request ID):
+  const initialOutputPortProvidedForOsConsumption = ({ cause, user }) => {};
+
+  // Launch: pull the output port's data to request contents of the app's membrane (it tells us
+  // when new ports added / removed / provided to the inner ownership):
+  // Output ports contain information about ports on the membrane;
+  // about routing circuit inside;
+  // about provided types (available on the membrane)
+  // storage of a type can be serialized - structural transfer,
+  // takes a series of elementary commands (can target an empty proto-cell's input,
+  // and it will make it a copy of the original cell)
+  let cause = 1;
+  let user = 'OS';
+  // Calling a function is equivalent to reading data on that port.
+  // Please, note that we only fetch changes. State snapshots must be implemented explicitly
+  // as a substructure with a history trail allowing to retrieve pre-existing state (not a default feature).
+  // So, initially, this call does nothing, even inside of the app there is an internal structure:
+  const result = initialOutputPortProvidedForOsConsumption({ cause, user });
 
   rootElt.innerHTML = `
     <h1 style="margin: 12px;">Reprogrammable JS set</h1>
@@ -476,6 +582,191 @@ app.render = () => {
 requestAnimationFrame(window.g_app.render);
 
 }, 0);
+
+
+
+
+
+
+const createTextbox = () => {
+  const textboxElt = window.document.createElement('textarea');
+
+    /*
+    window.subListeners({
+      textarea: textboxElt,
+    });
+    */
+
+    textboxElt.hidden = true;
+
+    // textboxElt.setAttribute('style', 'width: ' + window.innerWidth + 'px; height: 16px; min-height: 16px;');
+    textboxElt.style.width = window.innerWidth + 'px';
+    textboxElt.style.height = '16px';
+    textboxElt.style.minHeight = '16px';
+    // textboxElt.style.maxHeight = '99999px';
+
+    // This is how we enable passwords!
+    // textboxElt.style['-webkit-text-security'] = 'circle';
+
+    // For email addresses, URLs, etc.
+    // Options are:
+    // - none
+    // - sentences: Automatically capitalize the first letter of sentences.
+    // - words: Automatically capitalize the first letter of words.
+    // - characters: Automatically capitalize all characters.
+    // should be disabled for emails and passwords!
+    textboxElt.setAttribute('autocapitalize', 'sentences');
+
+    // Android supports this beautifully, Safari support will come.
+    // Because keyboard type switch might be costly, we can just keep the standard keyboard for all fields.
+    // textboxElt.setAttribute('inputmode', 'numeric');
+
+    // Multiline hints are not supported (it's wrapped on next lines though):
+    textboxElt.setAttribute('placeholder', 'Please, type here some multiple lines. Thank you!');
+
+    textboxElt.setAttribute('spellcheck', 'false');
+
+    // Never allow any autocomplete! Unfortunately, on iOS, enabling this
+    // feature makes the virtual keyboard to have an unpredictable and dynamic height.
+    textboxElt.setAttribute('autocomplete', 'off');
+
+    // This works on iOS, but the VK gets a dynamic height, we must avoid these 2
+    // textboxElt.setAttribute('autocomplete', 'email');
+    // textboxElt.setAttribute('autocomplete', 'name');
+
+
+    textboxElt.style.transform = 'translate3d(0px, 0px, 1px)';
+
+    // textboxElt.innerText = (() => { let a = ''; for (let i = 0; i < 2000; ++i) a += '\\n'; return a;  })();
+
+    /*
+    const formElt = window.document.createElement('form');
+    formElt.setAttribute('action', '.');
+    formElt.appendChild(textboxElt);
+    window.document.body.appendChild(formElt);
+    */
+    window.document.body.appendChild(textboxElt);
+
+    let autofocusHappened = true;
+        
+        
+    const editText = () => { 
+      // console.log('BASE', window.document.scrollingElement.scrollHeight);
+      // console.log('MARGIN-TOP', window.innerHeight);
+        
+      // window.document.body.style.overflow = 'hidden';
+      // window.document.documentElement.style.overflow = 'hidden';
+        
+      if (!textboxElt.hidden) {       
+        console.log('double edit text');
+        return;              
+      }
+        
+    
+      // iOS Safari only:    
+      if (window.navigator.platform === 'iPhone' || window.navigator.platform === 'iPad') {
+        if (window.orientation === 90 || window.orientation === -90) {
+          window.g_trackFocusHappensScreenBase = window.document.scrollingElement.scrollHeight;
+        } else {
+          if (window.document.scrollingElement.scrollHeight < window.innerHeight) {
+            window.g_trackFocusHappensScreenBase = window.document.scrollingElement.scrollHeight;
+          } else {           
+            window.g_trackFocusHappensScreenBase = window.innerHeight;
+          }
+        }
+        // window.innerHeight is not enough to make correct amount of scrolling in the landscape mode,
+        // so we add 80 px to it.     
+        textboxElt.style.transform = 'translate3d(0px, ' + (window.innerHeight + 80) + 'px, 1px)';
+      }
+  
+      textboxElt.hidden = false;    
+      // textboxElt.value = '';     
+      // window.document.body.appendChild(textboxElt);
+      autofocusHappened = false;    
+      textboxElt.focus();    
+    };
+      
+    let textboxTouchesCount = 0;  
+    let textboxTouchedAtYcoord = -10000;
+      
+    textboxElt.addEventListener('touchstart', e => {
+        textboxTouchesCount += e.changedTouches.length;
+        if (textboxTouchesCount > 1) {  
+          e.stopPropagation();          
+          e.preventDefault();
+          console.log('start canceled');
+        } else {
+          textboxTouchedAtYcoord = e.changedTouches[0].clientY;
+        }
+    }, { capture: true, passive: false });
+    
+    textboxElt.addEventListener('touchmove', e => {
+      const newY = e.changedTouches[0].clientY;
+      if (textboxElt.scrollTop <= 0 && textboxTouchedAtYcoord < newY ||
+        textboxElt.scrollTop >= textboxElt.scrollHeight - textboxElt.clientHeight && textboxTouchedAtYcoord > newY) {
+        e.stopPropagation();
+        e.preventDefault();
+        console.log('move canceled', textboxTouchedAtYcoord, newY);
+        textboxTouchedAtYcoord = newY;
+      }
+    }, { capture: true, passive: false });
+
+    textboxElt.addEventListener('touchend', e => {
+        if (textboxTouchesCount > 1) {  
+          e.stopPropagation();          
+          e.preventDefault();
+          console.log('end canceled');
+        }
+        textboxTouchesCount -= e.changedTouches.length;
+    }, { capture: true, passive: false });
+
+
+    textboxElt.addEventListener('blur', () => {
+      console.log('blur', window.innerHeight, window.document.scrollingElement.scrollTop);
+      // iOS Safari only:
+      if (window.navigator.platform === 'iPhone' || window.navigator.platform === 'iPad') {
+        textboxElt.style.transform = 'translate3d(0px, ' + (window.innerHeight + 80) + 'px, 1px)';
+      }
+
+      textboxElt.hidden = true;
+      // textboxElt.parentElement.removeChild(textboxElt);
+      window.g_app.fitTextareaInVisibleViewport(window.innerHeight);
+    }, true);
+
+    textboxElt.addEventListener('focus', e => {
+      if (autofocusHappened) {
+        // e.stopPropagation();
+        // e.preventDefault();
+        textboxElt.blur();
+        return;
+      } else {
+        autofocusHappened = true;
+      }
+
+      // iOS Safari only:
+      if (window.navigator.platform === 'iPhone' || window.navigator.platform === 'iPad') {
+        console.log('focus');
+        window.g_trackFocusHappens = true;
+      } else if (window.navigator.appVersion.indexOf('Android') !== -1) {
+        // When we receive the 'resize' event we must set the textarea size correctly!
+        window.g_androidTextareaSizeOnResize = true;
+        console.log(window.innerHeight);
+      } else {
+        // Desktop full-screen browser
+
+        window.document.body.style.overflow = 'hidden';
+        window.document.documentElement.style.overflow = 'hidden';
+        window.g_app.fitTextareaInVisibleViewport(window.innerHeight);
+      }
+    }, false);
+
+    window.g_app.textboxElt = textboxElt;
+    window.g_app.editText = editText;
+};
+
+window.g_app.createTextbox = createTextbox;
+
+
 }
 </script><style>
 html {
