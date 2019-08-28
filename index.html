@@ -253,6 +253,13 @@ window.addEventListener('orientationchange', () => {
   //console.log('orientationchange', window.innerHeight, window.document.scrollingElement.scrollHeight,
   //  window.innerWidth, window.document.scrollingElement.scrollWidth, window.orientation);
 
+  if (window.navigator.platform === 'iPhone' || window.navigator.platform === 'iPad') {
+    // Dismiss the virtual keyboard if any resize happens, otherwise it'll break the layout
+    if (window.g_app.textboxElt && !textboxElt.hidden) {
+      window.g_app.textboxElt.blur();
+    }
+  }
+
   if ((window.orientation === 0 || window.orientation === 180) && window.navigator.appVersion.indexOf('Android') !== -1) {
     // On Android, when rotating back to portrait from landscape, it's necessary to put the width to the low size,
     // otherwise Android will scale the viewport to the smaller size
